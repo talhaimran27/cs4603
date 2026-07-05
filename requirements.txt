@@ -6,6 +6,7 @@ langchain-community
 langgraph
 databricks-langchain
 databricks-ai-search
+databricks-sdk
 faiss-cpu
 langchain_chroma
 langchain-postgres

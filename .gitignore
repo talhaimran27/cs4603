@@ -221,3 +221,5 @@ __marimo__/
 mlflow.db
 mlruns/
 traces.json
+
+.vscode/
