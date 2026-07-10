@@ -116,12 +116,32 @@ def render_sidebar() -> tuple[str, str, str]:
 
 
 def ask_agent(client: openai.OpenAI, endpoint: str, history: list[dict]) -> str:
-    """Send the conversation to the serving endpoint and return the reply text."""
-    response = client.chat.completions.create(
-        model=endpoint,
-        messages=history,  # type: ignore[arg-type]  # plain role/content dicts are accepted at runtime
+    """Send the conversation to the serving endpoint and return the reply text.
+
+    The endpoint returns raw LangGraph state (not OpenAI ChatCompletion format),
+    so we call the REST API directly with requests.
+    """
+    url = f"{client.base_url}".rstrip("/").replace("/serving-endpoints", "") + f"/serving-endpoints/{endpoint}/invocations"
+    resp = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {client.api_key}"},
+        json={"messages": history},
+        timeout=120,
     )
-    return response.choices[0].message.content or ""
+    resp.raise_for_status()
+    data = resp.json()
+
+    # Response is a list with one element containing {"messages": [...]}
+    if isinstance(data, list) and data:
+        messages = data[0].get("messages", [])
+        if messages:
+            return messages[-1].get("content", "")
+
+    # Fallback: try standard OpenAI format
+    if isinstance(data, dict) and "choices" in data:
+        return data["choices"][0]["message"]["content"]
+
+    return str(data)
 
 
 def _sanitize_error(exc: Exception, token: str) -> str:
